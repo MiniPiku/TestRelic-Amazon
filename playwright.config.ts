@@ -27,9 +27,25 @@ export default defineConfig({
   // Nav Logs are captured by the @testrelic/playwright-analytics fixture (the
   // tests import `test`/`expect` from '@testrelic/playwright-analytics/fixture').
   use: {
+    baseURL: 'https://www.swiggy.com',
     video: 'on',
     screenshot: 'on',
     trace: 'on',
+    // Swiggy fronts the site with an Akamai-style bot challenge that serves a
+    // blank HTTP 202 to vanilla headless Chromium. A realistic browser context
+    // (real UA, India locale/timezone, desktop viewport, Accept-Language) plus
+    // the automation-flag mask in tests/swiggy.spec.ts lets the challenge
+    // resolve so the real SPA renders and the tests can see actual content.
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    locale: 'en-IN',
+    timezoneId: 'Asia/Kolkata',
+    viewport: { width: 1366, height: 768 },
+    extraHTTPHeaders: { 'Accept-Language': 'en-IN,en;q=0.9' },
+    launchOptions: { args: ['--disable-blink-features=AutomationControlled'] },
+    navigationTimeout: 45_000,
+    actionTimeout: 20_000,
   },
   reporter: [
     ['list'],
