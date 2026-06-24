@@ -2,7 +2,7 @@
   "name": "testrelic-fde-assignment",
   "version": "1.0.0",
   "private": true,
-  "description": "CLI that summarizes Playwright (CTRF) results in plain English and uploads them to TestRelic cloud.",
+  "description": "Playwright browser tests for Swiggy's public website (swiggy.com), with artifact capture uploaded to TestRelic cloud.",
   "scripts": {
     "test": "playwright test",
     "summary": "ts-node src/index.ts"
