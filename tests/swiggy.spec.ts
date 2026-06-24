@@ -53,20 +53,26 @@ test('User can search for a city or location', async ({ page }) => {
 });
 
 test('Restaurant listing page loads with results', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page).toHaveTitle(/swiggy/i, { timeout: 30_000 });
+  // Use a city-specific listing URL ("Dining Out Restaurants In Bangalore")
+  // rather than the homepage grid: the homepage's restaurant cards are gated on
+  // IP geolocation and are empty from non-India CI runners, whereas the /city/
+  // listing renders results regardless of where the runner is.
+  await page.goto('/city/bangalore', { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveTitle(/restaurant|bangalore|swiggy/i, { timeout: 30_000 });
 
-  // Once the restaurant-collection API responds, the homepage renders a grid of
-  // restaurant cards (links into /restaurants/...).
+  // The listing renders restaurant cards (links into /restaurants/...).
   const cards = page.locator('a[href*="/restaurants/"]');
   await expect(cards.first()).toBeVisible({ timeout: 30_000 });
   expect(await cards.count()).toBeGreaterThan(0);
 });
 
 test('A restaurant page opens successfully', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto('/city/bangalore', { waitUntil: 'domcontentloaded' });
 
-  const card = page.locator('a[href*="/restaurants/"]').first();
+  // Pick a real restaurant card, not the generic "/restaurants//dineout"
+  // category tile: a real card's href has a slug (with a hyphen) and a numeric
+  // restaurant id.
+  const card = page.locator('a[href*="/restaurants/"][href*="-"]').first();
   await expect(card).toBeVisible({ timeout: 30_000 });
 
   // Opening a restaurant navigates to its page — a navigation TestRelic records
@@ -74,10 +80,10 @@ test('A restaurant page opens successfully', async ({ page }) => {
   await card.click();
   await page.waitForLoadState('domcontentloaded');
 
-  // Restaurant pages have a restaurant-specific title (e.g. "Noomaq Cafe ..."),
-  // so assert the restaurant URL and that the page actually rendered (a
-  // non-empty title) rather than expecting the brand name.
-  await expect(page).toHaveURL(/\/restaurants\/\d+/i, { timeout: 30_000 });
+  // Restaurant pages have a restaurant-specific title (e.g. "Plan B In ..."),
+  // so assert the restaurant URL (slug + numeric id) and that the page actually
+  // rendered (a non-empty title) rather than expecting the brand name.
+  await expect(page).toHaveURL(/\/restaurants\/.*\d{4,}/i, { timeout: 30_000 });
   await expect(page).toHaveTitle(/.+/, { timeout: 30_000 });
 });
 

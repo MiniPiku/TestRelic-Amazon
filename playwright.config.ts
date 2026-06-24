@@ -64,8 +64,11 @@ export default defineConfig({
         apiKey: process.env.TESTRELIC_API_KEY,
         upload: 'both',
         uploadArtifacts: true,
-        artifactMaxSizeMb: 10,
-        timeout: 30_000,
+        // Raised from the defaults so artifacts (videos/screenshots) reliably
+        // upload from slower CI networks instead of being dropped on a 30s
+        // timeout — this is what populates the dashboard's Video/Screenshots.
+        artifactMaxSizeMb: 50,
+        timeout: 120_000,
       },
     }],
   ],

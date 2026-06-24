@@ -146,8 +146,10 @@ navigating. With these in place the homepage, location autocomplete, restaurant
 listing, restaurant page, and cart all render and the suite runs **5 passed,
 1 failed** (the intentional failure).
 
-> Restaurant cards on the homepage are location-gated; this run detects the
-> region from the runner's IP (India → Kolkata in the captured run).
+> The homepage restaurant grid is location-gated (it depends on the runner's IP),
+> so the **listing** and **restaurant-page** tests navigate to a city-specific
+> URL (`/city/bangalore`) that renders results regardless of where the runner is
+> — this keeps the suite green on non-India CI runners too.
 
 ## Project layout
 
