@@ -1,13 +1,15 @@
-# TestRelic FDE Assignment — Swiggy Browser Test Suite
+# TestRelic FDE Assignment — Amazon Browser Test Suite
 
-A Playwright suite that exercises real user journeys on **Swiggy's public website**
-([swiggy.com](https://www.swiggy.com)) and uploads every run to **TestRelic cloud**,
-so the dashboard populates with full diagnostics — **Video, Screenshots, Trace,
-Console logs, Network Requests, and Nav Logs** — for each test.
+A Playwright suite that exercises real, **multi-step user journeys** on
+**Amazon India's public website** ([amazon.in](https://www.amazon.in)) and
+uploads every run to **TestRelic cloud**, so the dashboard populates with full
+diagnostics — **Video, Screenshots, Trace, Console logs, Network Requests, and
+Nav Logs** — for each test.
 
 It:
 
-1. **Runs** 6 browser tests against `https://www.swiggy.com` (`npx playwright test`).
+1. **Runs** 5 deep browser journeys against `https://www.amazon.in`
+   (`npx playwright test`).
 2. **Captures** artifacts for every test — `video: 'on'`, `screenshot: 'on'`,
    `trace: 'on'` in [`playwright.config.ts`](playwright.config.ts).
 3. **Uploads** each run to **TestRelic cloud** via the
@@ -34,7 +36,7 @@ stay empty with the stock Playwright import.
 |---|---|
 | Problem Decomposition | [`docs/problem.md`](docs/problem.md) |
 | Playwright Config (artifact capture + cloud upload) | [`playwright.config.ts`](playwright.config.ts) |
-| Playwright Test Suite (6 Swiggy browser tests, 1 intentional failure) | [`tests/swiggy.spec.ts`](tests/swiggy.spec.ts) |
+| Playwright Test Suite (5 multi-step Amazon journeys) | [`tests/amazon.spec.ts`](tests/amazon.spec.ts) |
 | TestRelic Dashboard Screenshot | [`docs/TestRelic Dashboard Screenshots/Real ingested test results.png`](docs/TestRelic%20Dashboard%20Screenshots/Real%20ingested%20test%20results.png) |
 | MCP Query Screenshots | [`docs/MCP Query Screenshots/NL prompt.png`](docs/MCP%20Query%20Screenshots/NL%20prompt.png) · [`docs/MCP Query Screenshots/AI insight response.png`](docs/MCP%20Query%20Screenshots/AI%20insight%20response.png) |
 | Scale Brief | [`docs/scale.md`](docs/scale.md) |
@@ -43,22 +45,54 @@ stay empty with the stock Playwright import.
 
 ---
 
-## The 6 tests
+## The 5 tests
 
-All in [`tests/swiggy.spec.ts`](tests/swiggy.spec.ts), written from a user's
-perspective:
+All in [`tests/amazon.spec.ts`](tests/amazon.spec.ts). These are deliberately
+**deep, multistage journeys**: each test chains several `test.step()` stages
+**and** verifies data that flows *across* stages — not merely "did a page
+load". None of them fails on purpose; all 5 are expected to pass.
 
-| # | Test | What it covers |
-|---|------|----------------|
-| 1 | Homepage loads and renders the location search bar | Homepage paint + search entry point |
-| 2 | User can search for a city or location | Location autocomplete (network call) |
-| 3 | Restaurant listing page loads with results | City restaurant collection renders |
-| 4 | A restaurant page opens successfully | Navigation into a restaurant/menu page |
-| 5 | Cart interaction — user can open the cart | Cart view interaction |
-| 6 | **Order fails when restaurant is unavailable** | **Intentional failure** (`expect(1).toBe(2)`) — shows how a failed journey surfaces in the dashboard with its video, screenshot, and trace |
+| # | Test | The journey (every stage asserted) |
+|---|------|------------------------------------|
+| 1 | Search results sort by price and paginate correctly | Homepage → search "bluetooth speaker" → sort by *Price: Low to High* → **assert the sorted prices actually trend upward** (cheaper half vs. pricier half of the live prices) → go to page 2 and assert the results grid re-renders |
+| 2 | Product carries its title and price from results to the detail page | Search "mechanical keyboard" → capture the first organic result's **title and price** → open its detail page → **assert the PDP title matches the captured card title** and the PDP price is in the same ballpark → assert "About this item" renders |
+| 3 | Cart subtotal reflects quantity × unit price, then empties on removal | Search "usb cable" → open a product → capture its **unit price** → add to cart (declining the protection-plan modal) → open the cart → set quantity to 2 → **assert subtotal ≈ 2 × unit price** → remove the item → assert the cart reports empty (0 items) |
+| 4 | Mega-menu navigation into a department preserves back/forward state | Homepage → open the "All" mega-menu → drill into a department listing → open a product → **Back restores the listing, Forward returns to the product page** |
+| 5 | Bestsellers list is rank-ordered and the top item opens its detail page | Open Electronics Bestsellers → **assert the visible rank badges ascend (#1, #2, #3…)** → open the top item and assert it lands on a real product detail page |
 
-`npx playwright test` is expected to end with **1 failed** (test #6) — that is
-the intended outcome, demonstrating how a real failure appears on the dashboard.
+`npx playwright test` is expected to end with **0 failed** — every journey
+passes (or, if Amazon serves a bot challenge, skips cleanly; see below).
+
+### Resilience against Amazon's bot challenge
+
+Amazon fronts amazon.in with a CAPTCHA / "Continue shopping" interstitial that
+triggers far more often for headless browsers on non-India CI IPs. The suite
+handles this in three layers so a challenge never turns the run red:
+
+1. **A realistic browser context** in [`playwright.config.ts`](playwright.config.ts)
+   (real Chrome UA, `en-IN` locale, `Asia/Kolkata` timezone, desktop viewport,
+   `Accept-Language` header) plus a `navigator.webdriver` mask in the spec —
+   this materially reduces how often the challenge is served at all.
+2. **Detection + clean skip** — every test checks for the challenge after each
+   landing (`isBotChallenge` / `skipIfBlocked`) and `test.skip()`s instead of
+   failing when one is served.
+3. **CI retries** — `retries: 2` on CI only, so bot-challenge / network jitter
+   gets a second chance while local failures still surface immediately.
+
+Other robustness details baked into the spec:
+
+- **Sponsored-ad cards are excluded** when picking "the first result" — their
+  titles link to `/sspa/click` redirects, not product pages.
+- **Result title links open in a new tab** (`target="_blank"`), so the suite
+  navigates to the link's `href` to keep the whole journey on one page object.
+- **Overlays are dismissed best-effort** (cookie consent, "Continue shopping",
+  the post-add-to-cart protection-plan modal).
+- **Every test ends on `about:blank`** — Amazon pages hold long-lived
+  streaming/telemetry connections open, which can stall the analytics
+  fixture's teardown while it collects response bodies.
+- **No hardcoded catalog facts** — assertions verify the *shape* of live data
+  (prices ascend, ranks ascend, titles carry across pages), never a specific
+  product, price, or rank.
 
 ---
 
@@ -76,9 +110,8 @@ cp .env.example .env          # then edit .env and set TESTRELIC_API_KEY
 npx playwright test
 ```
 
-> Unlike the previous CLI-fixture version, these are **real browser tests**
-> against the live Swiggy site, so a browser download (`npx playwright install`)
-> and network access are required.
+> These are **real browser tests** against the live Amazon India site, so a
+> browser download (`npx playwright install`) and network access are required.
 
 Running the suite produces, for every test:
 
@@ -100,12 +133,12 @@ use: {
   video: 'on',
   screenshot: 'on',
   trace: 'on',
-  // ...plus a realistic browser context (see "Bot challenge" below).
+  // ...plus a realistic browser context (see "Bot challenge" above).
 }
 ```
 
 **2. Fixture import** — every test in
-[`tests/swiggy.spec.ts`](tests/swiggy.spec.ts):
+[`tests/amazon.spec.ts`](tests/amazon.spec.ts):
 
 ```ts
 import { test, expect } from '@testrelic/playwright-analytics/fixture';
@@ -140,7 +173,7 @@ set `TESTRELIC_CLOUD_ENDPOINT` (or the `TESTRELIC_STAGE_*` vars) to override.
 ├── README.md
 ├── playwright.config.ts    # artifact capture (video/screenshot/trace) + reporters
 ├── tests/
-│   └── swiggy.spec.ts      # 6 Swiggy browser tests (1 intentional failure)
+│   └── amazon.spec.ts      # 5 multi-step Amazon journeys (all expected to pass)
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # runs the suite + uploads to TestRelic
