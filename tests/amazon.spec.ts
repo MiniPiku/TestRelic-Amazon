@@ -75,20 +75,28 @@ async function skipIfBlocked(page: Page): Promise<void> {
 async function dismissInterstitials(page: Page): Promise<void> {
   // ISSUE 5.2: let the DOM reach a stable state before we probe for overlays,
   // otherwise a modal that mounts a beat late is missed and re-appears later.
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await page.waitForLoadState('domcontentloaded').catch(() => { });
   const clickers = [
     '#sp-cc-accept', // cookie consent
     'input[data-action-type="DISMISS"]', // some modals
     'button:has-text("Continue shopping")',
     '#attachSiNoCoverage a', // decline protection plan (link form)
-    '#attachSiNoCoverage-announce', // decline protection plan (button form)
+    // Decline protection plan (button form). Target the parent button, NOT the
+    // inner '#attachSiNoCoverage-announce' span — that span is aria-hidden, so
+    // Playwright can never click it and the attempt burns its full timeout.
+    '#attachSiNoCoverage',
     'button:has-text("No, thanks")',
     'button:has-text("No thanks")',
   ];
   for (const sel of clickers) {
     const el = page.locator(sel).first();
     if (await el.count().catch(() => 0)) {
-      await el.click({ timeout: 3_000 }).catch(() => {});
+      // Bypass Playwright's actionability checks and fire the click directly
+      // on the DOM node: these dismissal targets are routinely aria-hidden,
+      // overlay-covered, or mid-animation, and a real `.click()` would stall
+      // for its full timeout on each one. dispatchEvent only needs the node to
+      // be attached, so it fires (or no-ops via catch) immediately.
+      await el.dispatchEvent('click', undefined, { timeout: 3_000 }).catch(() => { });
     }
   }
 }
@@ -132,7 +140,7 @@ function firstResultTitleLink(page: Page): Locator {
 async function waitForResults(page: Page): Promise<void> {
   await page
     .waitForSelector(RESULT_CARD_SELECTOR, { timeout: 30_000, state: 'visible' })
-    .catch(() => {});
+    .catch(() => { });
   await skipIfBlocked(page);
   // If a query somehow returned only sponsored cards, there's nothing organic to
   // click — skip rather than fail.
@@ -196,7 +204,7 @@ test.beforeEach(async ({ page }) => {
 // about:blank severs every in-flight Amazon connection first, so teardown's
 // body collection always terminates.
 test.afterEach(async ({ page }) => {
-  await page.goto('about:blank').catch(() => {});
+  await page.goto('about:blank').catch(() => { });
 });
 
 // ---------------------------------------------------------------------------
@@ -430,9 +438,9 @@ test('Cart subtotal reflects quantity times unit price, then empties on removal'
       .locator('[data-action="a-stepper-increment"], button[aria-label*="Increase"]')
       .first();
     if (await qtySelect.count()) {
-      await qtySelect.selectOption({ value: '2' }).catch(() => {});
+      await qtySelect.selectOption({ value: '2' }).catch(() => { });
     } else if (await stepperPlus.count()) {
-      await stepperPlus.click().catch(() => {});
+      await stepperPlus.click().catch(() => { });
     } else {
       test.skip(true, 'Quantity control not available for this cart line.');
     }
@@ -486,7 +494,7 @@ test('Mega-menu navigation into a department preserves back/forward state', asyn
     await skipIfBlocked(page);
     const hamburger = page.locator('#nav-hamburger-menu');
     await expect(hamburger).toBeVisible({ timeout: 30_000 });
-    await hamburger.click().catch(() => {});
+    await hamburger.click().catch(() => { });
     // ISSUE 1: `.hmenu-visible, #hmenu-content` tripped strict mode because Amazon
     // renders TWO `#hmenu-content` nodes (a hidden template + the live flyout);
     // scoping to `:visible` resolves to exactly the open panel. The flyout body is
@@ -513,7 +521,7 @@ test('Mega-menu navigation into a department preserves back/forward state', asyn
       .first();
     let onResults = false;
     if (await dept.count()) {
-      await dept.click({ timeout: 10_000 }).catch(() => {});
+      await dept.click({ timeout: 10_000 }).catch(() => { });
       onResults = await firstResultCard(page)
         .isVisible({ timeout: 8_000 })
         .catch(() => false);
