@@ -71,6 +71,8 @@ export default defineConfig({
         // Raised from the defaults so artifacts (videos/screenshots) reliably
         // upload from slower CI networks instead of being dropped on a 30s
         // timeout — this is what populates the dashboard's Video/Screenshots.
+        // (Uploads run in the reporter process, outside any test's timeout,
+        // so this allowance cannot affect test results.)
         artifactMaxSizeMb: 50,
         timeout: 120_000,
       },

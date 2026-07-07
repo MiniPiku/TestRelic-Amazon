@@ -197,14 +197,28 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-// Amazon pages hold long-lived streaming/telemetry connections open. The
-// TestRelic analytics fixture reads captured response bodies during teardown,
-// and a request that never completes stalls that teardown past the test
-// timeout ("Tearing down page exceeded the test timeout"). Parking the page on
-// about:blank severs every in-flight Amazon connection first, so teardown's
-// body collection always terminates.
-test.afterEach(async ({ page }) => {
-  await page.goto('about:blank').catch(() => { });
+// ROOT CAUSE of the "Tearing down page exceeded the test timeout" failures:
+// the analytics fixture queues an unbounded `response.body()` read for every
+// response, and its page-fixture teardown awaits
+// `Promise.allSettled(pendingBodyReads)` with no deadline
+// (finalizeCapturedRequests in @testrelic/playwright-analytics 2.10.0).
+// Amazon keeps long-poll/streaming/telemetry responses open indefinitely, so
+// a single unfinished body stalls teardown until the test times out — with
+// every step already passed. Navigating to about:blank was not enough:
+// service-worker-mediated and keepalive responses survive navigation (they
+// are heaviest on product-detail pages, which is why the PDP-continuity and
+// cart journeys kept failing). Closing the page tears down its entire network
+// stack, so every pending body() read rejects immediately and teardown
+// settles. A final screenshot is attached first so the dashboard's
+// Screenshots column stays populated. (The durable fix belongs in the
+// package: bound the allSettled with a deadline, e.g. Promise.race against a
+// ~5s timer.)
+test.afterEach(async ({ page }, testInfo) => {
+  const shot = await page.screenshot({ timeout: 5_000 }).catch(() => null);
+  if (shot) {
+    await testInfo.attach('screenshot', { body: shot, contentType: 'image/png' });
+  }
+  await page.close().catch(() => { });
 });
 
 // ---------------------------------------------------------------------------
