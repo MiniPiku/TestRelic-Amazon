@@ -24,27 +24,6 @@ stay empty with the stock Playwright import.
 
 ---
 
-## 🎥 Demo
-
-[Watch the 3-minute walkthrough on Loom](https://www.loom.com/share/d185f31e95bd4e329da3c43dc5726dc2)
-
----
-
-## 📦 Deliverables
-
-| Deliverable | Location |
-|---|---|
-| Problem Decomposition | [`docs/problem.md`](docs/problem.md) |
-| Playwright Config (artifact capture + cloud upload) | [`playwright.config.ts`](playwright.config.ts) |
-| Playwright Test Suite (5 multi-step Amazon journeys) | [`tests/amazon.spec.ts`](tests/amazon.spec.ts) |
-| TestRelic Dashboard Screenshot | [`docs/TestRelic Dashboard Screenshots/Real ingested test results.png`](docs/TestRelic%20Dashboard%20Screenshots/Real%20ingested%20test%20results.png) |
-| MCP Query Screenshots | [`docs/MCP Query Screenshots/NL prompt.png`](docs/MCP%20Query%20Screenshots/NL%20prompt.png) · [`docs/MCP Query Screenshots/AI insight response.png`](docs/MCP%20Query%20Screenshots/AI%20insight%20response.png) |
-| Scale Brief | [`docs/scale.md`](docs/scale.md) |
-| GitHub Actions CI Run | [View workflow run ↗](https://github.com/MiniPiku/TestRelic-Assignement/actions/runs/28083767077/job/83144615529) |
-| Demo Video | [Loom ↗](https://www.loom.com/share/86464a8c6f5a4775af392145603f4403)
-
----
-
 ## The 5 tests
 
 All in [`tests/amazon.spec.ts`](tests/amazon.spec.ts). These are deliberately
@@ -179,27 +158,7 @@ set `TESTRELIC_CLOUD_ENDPOINT` (or the `TESTRELIC_STAGE_*` vars) to override.
 │       └── ci.yml          # runs the suite + uploads to TestRelic
 ├── .testrelic/             # TestRelic cloud config (endpoint + repo name)
 ├── test-results/           # videos, screenshots, traces, analytics timeline
-├── docs/
-│   ├── problem.md          # customer problem decomposition (Part 1)
-│   ├── scale.md            # scale brief (Part 4)
-│   ├── GitHub Actions CI Run/
-│   ├── MCP Query Screenshots/
-│   └── TestRelic Dashboard Screenshots/
 ├── package.json
 ├── tsconfig.json
 └── .env.example
 ```
-
-## Screenshots
-
-### TestRelic Dashboard
-![TestRelic Dashboard](docs/TestRelic%20Dashboard%20Screenshots/Real%20ingested%20test%20results.png)
-
-### MCP AI Insight
-![NL Prompt](docs/MCP%20Query%20Screenshots/NL%20prompt.png)
-![AI Insight Response](docs/MCP%20Query%20Screenshots/AI%20insight%20response.png)
-
-### GitHub Actions CI Run
-![CI Run](docs/GitHub%20Actions%20CI%20Run/CI%20run.png)
-![GitHub Actions Job](docs/GitHub%20Actions%20CI%20Run/Github%20Actions%20job.png)
-**Link:** https://github.com/MiniPiku/TestRelic-Assignement/actions/runs/28083767077/job/83144615529
